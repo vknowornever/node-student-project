@@ -30,7 +30,66 @@ app.listen(PORT, () => {
 });
 
 // register student - post
+
+// create student schema
+const studentSchema = new mongoose.Schema({
+  name: String,
+  email: String,
+  phone: String,
+  password: String,
+});
+
+// create model
+const StudentModel = mongoose.model("Student", studentSchema);
+
+app.post("/registerStudent", async (req, res) => {
+  const student = req.body;
+  const studnetData = new StudentModel(student);
+  const createdData = await studnetData.save();
+  res.status(201).send({
+    message: "student registered successfully",
+    data: createdData,
+  });
+});
+
 // login student
+app.post("/loginStudent", async (req, res) => {
+  const loginObj = req.body;
+  let { userName, password } = loginObj;
+
+  if (userName && password) {
+    const getStudent = await StudentModel.findOne({
+      name: userName,
+      password: password,
+    }).select("name password");
+    if (Object.keys(getStudent).length) {
+      res.send({
+        message: "user logeed in successful",
+        data: getStudent,
+      });
+    }
+  } else {
+    res.status(200).status("Student not found");
+  }
+});
+
+// Subject schema
+const subjectSchema = new mongoose.Schema({
+  name: String,
+});
+
+// Subject model
+const SubjectModel = mongoose.model("Subject", studentSchema);
+
+// Method to insert multiple subjects
+app.post("/addSubjects", async (req, res) => {
+  const subjectArr = req.body;
+  if (subjectArr.length) {
+    const insertManyRes = await SubjectModel.insertMany(subjectArr);
+    console.log(insertManyRes);
+    res.send(insertManyRes);
+  }
+});
 
 // grade a student - post
 // get grades of a student in all subjects
