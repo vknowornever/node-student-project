@@ -33,10 +33,11 @@ app.listen(PORT, () => {
 
 // create student schema
 const studentSchema = new mongoose.Schema({
-  name: String,
-  email: String,
-  phone: String,
-  password: String,
+  name: { type: String },
+  email: { type: String },
+  phone: { type: String },
+  password: { type: String },
+  studentEnrolledSubject: [{ type: mongoose.Schema.Types.ObjectId }],
 });
 
 // create model
@@ -75,7 +76,7 @@ app.post("/loginStudent", async (req, res) => {
 
 // Subject schema
 const subjectSchema = new mongoose.Schema({
-  name: String,
+  name: { type: String },
 });
 
 // Subject model
@@ -91,8 +92,117 @@ app.post("/addSubjects", async (req, res) => {
   }
 });
 
+// Get All subject and subject with ID -- self
+
+app.post("/getSubjects", async (req, res) => {
+  const { id, name } = req.body;
+  if (!id && !name) {
+    const allGrades = await SubjectModel.find();
+    res.send(allGrades);
+  } else if (id) {
+    const subjectById = await StudentModel.findById(id);
+    res.send(subjectById);
+  } else {
+    const subjectByName = await SubjectModel.find({ name: name });
+    res.send(subjectByName);
+  }
+});
+
+// create grade schema
+const gradeSchema = new mongoose.Schema({
+  grade: { type: String, require: true, unique: true },
+});
+
+// Grade Model
+const GradeModel = mongoose.model("Grade", gradeSchema);
+
+// Insert grade
+
+app.post("/addGrade", async (req, res) => {
+  const grade = req.body;
+  const gradeExist = await GradeModel.findOne(grade);
+  // const gradeObject = Object.keys(gradeExist).length && new GradeModel(grade);
+  if (!gradeExist) {
+    const newGrade = new GradeModel(grade);
+    const dbRes = await newGrade.save();
+    res.send(dbRes);
+  } else {
+    res.send("ALready exist");
+  }
+});
+
+// get all grade or grade by id
+app.post("/getGrade", async (req, res) => {
+  const { id, grade } = req.body;
+  if (!id && !grade) {
+    const allGrades = await GradeModel.find().select("_id grade");
+    res.send(allGrades);
+  } else if (id) {
+    const allGradeByID = await GradeModel.findOne({ _id: id }).select(
+      "_id grade"
+    );
+    res.send("Hi", allGradeByID);
+  } else {
+    const gradeByName = await GradeModel.findOne({ grade: grade }).select(
+      "_id grade"
+    );
+    res.send(gradeByName);
+  }
+});
+
+// Progress report schema
+
+const progressReportSchema = new mongoose.Schema({
+  student: { type: mongoose.Schema.Types.ObjectId },
+  subjects: [
+    {
+      subject: { type: mongoose.Schema.Types.ObjectId },
+      grade: { type: mongoose.Schema.Types.ObjectId },
+    },
+  ],
+});
+
+const ProgressReportModel = mongoose.model(
+  "StudentReport",
+  progressReportSchema
+);
+
+// create student report
+
+app.post("/addStudentReport", async (req, res) => {
+  const { student, subjects } = req.body;
+  if (subjects.length) {
+    // finding the student
+    const studentData = await StudentModel.findById(student);
+
+    // getting student enrolled subjects
+
+    const studentSubjects = studentData.studentEnrolledSubject;
+    console.log(studentSubjects);
+
+    // checking if the enrollment
+    const arr = [];
+    subjects.forEach((subject) => {
+      studentSubjects.forEach((studentEnrolledSubject) => {
+        console.log(subject.subject == studentEnrolledSubject);
+        if (subject.subject == studentEnrolledSubject) {
+          arr.push(true);
+        }
+      });
+    });
+
+    if (arr.length == subjects.length) {
+      const studentGrade = new ProgressReportModel({ student, subjects });
+      const saveStudentGrade = await studentGrade.save();
+      res.send(saveStudentGrade);
+    } else {
+      res.send("Record insert failed!");
+    }
+  }
+});
+
 // grade a student - post
-// get grades of a student in all subjects
+// get grades of a student in all subjectsnodemon
 // get gradesof student in particular subject
 // get graded of all students
 
